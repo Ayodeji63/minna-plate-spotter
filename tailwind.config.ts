@@ -47,6 +47,15 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Nigerian theme colors
+        'nigeria-green': {
+          DEFAULT: "hsl(var(--nigeria-green))",
+          light: "hsl(var(--nigeria-green-light))",
+          dark: "hsl(var(--nigeria-green-dark))",
+        },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        info: "hsl(var(--info))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
@@ -57,6 +66,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+      },
+      backgroundImage: {
+        'gradient-primary': 'var(--gradient-primary)',
+        'gradient-hero': 'var(--gradient-hero)',
+        'gradient-card': 'var(--gradient-card)',
+      },
+      boxShadow: {
+        'card': 'var(--shadow-card)',
+        'hover': 'var(--shadow-hover)',
       },
       borderRadius: {
         lg: "var(--radius)",
