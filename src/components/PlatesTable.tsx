@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { MapPin, Clock, Camera, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { PlateRecord } from '@/lib/supabase';
+import type { PlateRecord } from '@/lib/supabase.ts';
 
 interface PlatesTableProps {
   plates: PlateRecord[];

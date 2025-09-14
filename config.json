@@ -1,0 +1,77 @@
+{
+  "camera": {
+    "resolution": [1920, 1080],
+    "framerate": 30,
+    "rotation": 0,
+    "brightness": 50,
+    "contrast": 50,
+    "saturation": 0,
+    "iso": 0,
+    "exposure_mode": "auto",
+    "awb_mode": "auto"
+  },
+  "detection": {
+    "min_plate_width": 100,
+    "min_plate_height": 30,
+    "max_plate_width": 400,
+    "max_plate_height": 150,
+    "confidence_threshold": 0.6,
+    "aspect_ratio_min": 2.0,
+    "aspect_ratio_max": 5.0,
+    "min_area": 1000
+  },
+  "ocr": {
+    "psm": 8,
+    "oem": 3,
+    "whitelist": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-",
+    "dpi": 300,
+    "lang": "eng"
+  },
+  "preprocessing": {
+    "gaussian_blur_kernel": 5,
+    "adaptive_threshold_block_size": 11,
+    "adaptive_threshold_c": 2,
+    "morphology_kernel_size": [3, 3],
+    "min_resize_height": 50
+  },
+  "storage": {
+    "save_images": true,
+    "save_detections": true,
+    "max_stored_images": 1000,
+    "cleanup_older_than_days": 30
+  },
+  "nigerian_plates": {
+    "state_codes": {
+      "Niger": ["NGR", "MIN", "BID", "SUL", "KON"],
+      "common_prefixes": ["ABC", "DEF", "GHI", "JKL", "MNO", "PQR", "STU", "VWX", "YZA"]
+    },
+    "patterns": [
+      "^[A-Z]{3}[-\\s]?\\d{3}[-\\s]?[A-Z]{2}$",
+      "^[A-Z]{2}[-\\s]?\\d{3}[-\\s]?[A-Z]{3}$",
+      "^[A-Z]{3}[-\\s]?\\d{2}[-\\s]?[A-Z]{2}$",
+      "^\\d{2}[-\\s]?[A-Z]{2}[-\\s]?\\d{3}$"
+    ]
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(levelname)s - %(message)s",
+    "file": "plate_recognition.log",
+    "max_file_size_mb": 10,
+    "backup_count": 5
+  },
+  "alerts": {
+    "enable_alerts": false,
+    "webhook_url": "",
+    "email_notifications": false,
+    "smtp_server": "",
+    "smtp_port": 587,
+    "email_user": "",
+    "email_password": "",
+    "alert_recipients": []
+  },
+  "performance": {
+    "max_concurrent_processing": 2,
+    "frame_skip": 1,
+    "processing_timeout": 30
+  }
+}

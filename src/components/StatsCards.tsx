@@ -1,6 +1,6 @@
 import { Car, Clock, MapPin, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/card';
-import type { PlateRecord } from '@/lib/supabase';
+import type { PlateRecord } from '@/lib/supabase.ts';
 
 interface StatsCardsProps {
   plates: PlateRecord[];

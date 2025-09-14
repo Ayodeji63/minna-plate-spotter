@@ -1,82 +1,121 @@
-import { useState, useEffect } from 'react';
-import { supabase, type PlateRecord } from '@/lib/supabase';
-import { useToast } from '@/hooks/use-toast';
+// hooks/usePlates.ts
+import { useState, useEffect, useCallback } from 'react'
+import { fetchPlateRecords, subscribeToPlateRecords, PlateRecord } from '@/lib/supabase.ts'
 
 export const usePlates = () => {
-  const [plates, setPlates] = useState<PlateRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [plates, setPlates] = useState<PlateRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Fetch plates from database
-  const fetchPlates = async () => {
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+
+  // Fetch data function
+  const loadPlates = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('plates')
-        .select('*')
-        .order('captured_at', { ascending: false });
-
-      if (error) throw error;
-      
-      setPlates(data || []);
-    } catch (error) {
-      console.error('Error fetching plates:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch plate records. Please check your connection.',
-        variant: 'destructive',
-      });
+      setLoading(true)
+      setError(null)
+      const data = await fetchPlateRecords(searchTerm, dateFrom, dateTo)
+      setPlates(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch plate records')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }, [searchTerm, dateFrom, dateTo])
 
-  // Set up real-time subscription
+  // Initial data load
   useEffect(() => {
-    fetchPlates();
+    loadPlates()
+  }, [loadPlates])
 
-    // Subscribe to real-time changes
-    const subscription = supabase
-      .channel('plates-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'plates',
-        },
-        (payload) => {
-          console.log('Real-time update:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newPlate = payload.new as PlateRecord;
-            setPlates((prev) => [newPlate, ...prev]);
-            
-            toast({
-              title: 'New Plate Detected!',
-              description: `Plate ${newPlate.plate_text} detected at ${newPlate.junction}`,
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedPlate = payload.new as PlateRecord;
-            setPlates((prev) =>
-              prev.map((plate) =>
-                plate.id === updatedPlate.id ? updatedPlate : plate
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedPlate = payload.old as PlateRecord;
-            setPlates((prev) =>
-              prev.filter((plate) => plate.id !== deletedPlate.id)
-            );
-          }
+  // Real-time subscription
+  useEffect(() => {
+    const subscription = subscribeToPlateRecords((payload) => {
+      console.log('Real-time update:', payload)
+      
+      if (payload.eventType === 'INSERT') {
+        // Transform new record to match component expectations
+        const newRecord: PlateRecord = {
+          ...payload.new,
+          plate_text: payload.new.license_plate_number,
+          captured_at: payload.new.detected_at,
+          junction: payload.new.location?.junction || 'Unknown Junction',
+          image_url: payload.new.crop_image_url || payload.new.full_image_url
         }
-      )
-      .subscribe();
+        
+        // Only add if it matches current filters
+        const matchesSearch = !searchTerm || 
+          newRecord.license_plate_number.toLowerCase().includes(searchTerm.toLowerCase())
+        
+        const matchesDateFrom = !dateFrom || 
+          new Date(newRecord.detected_at) >= new Date(dateFrom)
+        
+        const matchesDateTo = !dateTo || 
+          new Date(newRecord.detected_at) <= new Date(dateTo)
+        
+        if (matchesSearch && matchesDateFrom && matchesDateTo) {
+          setPlates(prev => [newRecord, ...prev])
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        setPlates(prev => prev.map(plate => 
+          plate.id === payload.new.id 
+            ? { 
+                ...payload.new,
+                plate_text: payload.new.license_plate_number,
+                captured_at: payload.new.detected_at,
+                junction: payload.new.location?.junction || 'Unknown Junction',
+                image_url: payload.new.crop_image_url || payload.new.full_image_url
+              }
+            : plate
+        ))
+      } else if (payload.eventType === 'DELETE') {
+        setPlates(prev => prev.filter(plate => plate.id !== payload.old.id))
+      }
+    })
 
-    // Cleanup subscription on unmount
     return () => {
-      subscription.unsubscribe();
-    };
-  }, [toast]);
+      subscription.unsubscribe()
+    }
+  }, [searchTerm, dateFrom, dateTo])
 
-  return { plates, loading, refetch: fetchPlates };
-};
+  // Filter handlers
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+  }
+
+  const handleDateFromChange = (value: string) => {
+    setDateFrom(value)
+  }
+
+  const handleDateToChange = (value: string) => {
+    setDateTo(value)
+  }
+
+  const handleClearFilters = () => {
+    setSearchTerm('')
+    setDateFrom('')
+    setDateTo('')
+  }
+
+  // Manual refresh
+  const refresh = () => {
+    loadPlates()
+  }
+
+  return {
+    plates,
+    loading,
+    error,
+    searchTerm,
+    dateFrom,
+    dateTo,
+    handleSearchChange,
+    handleDateFromChange,
+    handleDateToChange,
+    handleClearFilters,
+    refresh
+  }
+}

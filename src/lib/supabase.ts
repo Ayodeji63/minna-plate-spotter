@@ -1,115 +1,85 @@
-import { createClient } from '@supabase/supabase-js';
+// lib/supabase.ts
+import { createClient } from '@supabase/supabase-js'
 
-// Try different possible environment variable names for Lovable's Supabase integration
-const possibleUrls = [
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.SUPABASE_URL,
-  import.meta.env.VITE_PUBLIC_SUPABASE_URL,
-  import.meta.env.PUBLIC_SUPABASE_URL
-];
+const supabaseUrl = import.meta.env.VITE_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY
 
-const possibleKeys = [
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-  import.meta.env.SUPABASE_ANON_KEY,
-  import.meta.env.VITE_PUBLIC_SUPABASE_ANON_KEY,
-  import.meta.env.PUBLIC_SUPABASE_ANON_KEY
-];
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-const supabaseUrl = possibleUrls.find(url => url);
-const supabaseAnonKey = possibleKeys.find(key => key);
-
-console.log('Trying to connect to Supabase...');
-console.log('Available env vars:', Object.keys(import.meta.env));
-console.log('Found URL:', supabaseUrl ? 'Yes' : 'No');
-console.log('Found Key:', supabaseAnonKey ? 'Yes' : 'No');
-
-// Create mock data for demonstration
-const createMockData = () => {
-  const currentTime = new Date();
-  const junctions = [
-    'Minna Central Junction',
-    'Minna Junction A',
-    'Minna Junction B',
-    'Bosso Junction',
-    'Chanchaga Junction',
-    'Tunga Junction',
-    'Dutsen Kura Junction',
-    'Kpakungu Junction'
-  ];
-  
-  const plateFormats = ['ABC', 'XYZ', 'LMN', 'DEF', 'GHI', 'JKL', 'RST', 'UVW'];
-  const plateNumbers = ['123', '456', '789', '012', '345', '678', '901', '234'];
-  const plateSuffixes = ['DE', 'FG', 'HI', 'JK', 'LM', 'NO', 'PQ', 'RS'];
-
-  return Array.from({ length: 15 }, (_, i) => {
-    const minutesAgo = Math.floor(Math.random() * 1440); // Random time within last 24 hours
-    const capturedTime = new Date(currentTime.getTime() - minutesAgo * 60000);
-    
-    return {
-      id: `mock-${i + 1}`,
-      plate_text: `${plateFormats[i % plateFormats.length]}${plateNumbers[i % plateNumbers.length]}${plateSuffixes[i % plateSuffixes.length]}`,
-      captured_at: capturedTime.toISOString(),
-      junction: junctions[i % junctions.length],
-      image_url: Math.random() > 0.3 ? `https://via.placeholder.com/120x80/2D7D32/FFFFFF?text=Plate+${i + 1}` : null
-    };
-  }).sort((a, b) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime());
-};
-
-const mockData = createMockData();
-
-// Create mock client for when Supabase is not configured
-const createMockClient = () => ({
-  from: () => ({
-    select: () => ({
-      order: () => Promise.resolve({ data: mockData, error: null })
-    }),
-    insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured - this is demo data' } }),
-  }),
-  channel: () => ({
-    on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) })
-  })
-});
-
-// Export the Supabase client
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createMockClient() as any;
-
-// Log configuration status
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase not configured yet. Using mock client. Please set up your environment variables.');
-} else {
-  console.log('Supabase client configured successfully!');
+// Types for your license plate data
+export interface PlateRecord {
+  id: number
+  license_plate_number: string
+  confidence_score: number
+  full_image_url: string | null
+  crop_image_url: string | null
+  detected_at: string
+  created_at: string
+  location: any | null
+  status: string
+  // Add fields to match your PlatesTable component
+  plate_text: string // maps to license_plate_number
+  captured_at: string // maps to detected_at
+  junction: string // you might need to add this field to your DB
+  image_url: string | null // maps to crop_image_url or full_image_url
 }
 
-export type Database = {
-  public: {
-    Tables: {
-      plates: {
-        Row: {
-          id: string;
-          plate_text: string;
-          captured_at: string;
-          junction: string;
-          image_url: string | null;
-        };
-        Insert: {
-          id?: string;
-          plate_text: string;
-          captured_at?: string;
-          junction: string;
-          image_url?: string | null;
-        };
-        Update: {
-          id?: string;
-          plate_text?: string;
-          captured_at?: string;
-          junction?: string;
-          image_url?: string | null;
-        };
-      };
-    };
-  };
-};
+// Database functions
+export const fetchPlateRecords = async (
+  searchTerm?: string,
+  dateFrom?: string,
+  dateTo?: string
+): Promise<PlateRecord[]> => {
+  let query = supabase
+    .from('license_plate_detections')
+    .select('*')
+    .eq('status', 'active')
+    .order('detected_at', { ascending: false })
 
-export type PlateRecord = Database['public']['Tables']['plates']['Row'];
+  // Apply search filter
+  if (searchTerm) {
+    query = query.ilike('license_plate_number', `%${searchTerm}%`)
+  }
+
+  // Apply date filters
+  if (dateFrom) {
+    query = query.gte('detected_at', dateFrom)
+  }
+  if (dateTo) {
+    query = query.lte('detected_at', dateTo)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('Error fetching plate records:', error)
+    throw error
+  }
+
+  // Transform data to match PlatesTable component expectations
+  return (data || []).map(record => ({
+    ...record,
+    plate_text: record.license_plate_number,
+    captured_at: record.detected_at,
+    junction: record.location?.junction || 'Unknown Junction', // Default value
+    image_url: record.crop_image_url || record.full_image_url
+  }))
+}
+
+// Real-time subscription
+export const subscribeToPlateRecords = (
+  callback: (payload: any) => void
+) => {
+  return supabase
+    .channel('license_plate_detections')
+    .on(
+      'postgres_changes',
+      {
+        event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+        schema: 'public',
+        table: 'license_plate_detections'
+      },
+      callback
+    )
+    .subscribe()
+}
