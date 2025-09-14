@@ -18,7 +18,7 @@ const PlatesTable = ({ plates, loading }: PlatesTableProps) => {
     return (
       <Card className="p-8 text-center bg-gradient-card shadow-card">
         <div className="animate-spin h-8 w-8 border-4 border-nigeria-green border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Loading plate records...</p>
+        <p className="text-muted-foreground">Loading plate records....</p>
       </Card>
     );
   }
