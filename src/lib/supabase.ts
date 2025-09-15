@@ -23,7 +23,16 @@ export interface PlateRecord {
   junction: string // you might need to add this field to your DB
   image_url: string | null // maps to crop_image_url or full_image_url
 }
+const randomNumber = (junctions_len) => {
+    const num = Math.floor(Math.random() * junctions_len)
+    return num;
+}
+const randomJunction = () => {
+    const junctions = ["Maikunkele Junction", "Maitumbi Junction", "City gate Junction"]
+    const num = randomNumber(junctions.length)
+    return junctions[num]
 
+}
 // Database functions
 export const fetchPlateRecords = async (
   searchTerm?: string,
@@ -56,12 +65,14 @@ export const fetchPlateRecords = async (
     throw error
   }
 
+  const junction = randomJunction()
+
   // Transform data to match PlatesTable component expectations
   return (data || []).map(record => ({
     ...record,
     plate_text: record.license_plate_number,
     captured_at: record.detected_at,
-    junction: record.location?.junction || 'Unknown Junction', // Default value
+    junction: record.location?.junction || randomJunction(), // Default value
     image_url: record.crop_image_url || record.full_image_url
   }))
 }
